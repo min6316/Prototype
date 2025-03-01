@@ -1,0 +1,117 @@
+import pygame
+import random
+import math
+import datetime
+import os
+
+# Initialize Pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 800, 600
+BACKGROUND_COLOR = (20, 20, 30)
+OBJECT_COLOR = (100, 200, 255)
+FORCE_COLOR = (255, 100, 100)
+PIVOT_COLOR = (255, 255, 0)
+BUTTON_COLOR = (50, 150, 50)
+TEXT_COLOR = (255, 255, 255)
+WARNING_COLOR = (255, 0, 0)
+LOG_FILE = os.path.join(os.path.dirname(__file__), "simulation_log.txt")
+
+# Create screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Force and Moment Simulation")
+
+# Object properties
+object_size = 80
+object_pos = [WIDTH // 2, HEIGHT // 2]
+pivot_pos = [WIDTH // 2, HEIGHT // 2]
+object_angle = 0  # Rotation angle in degrees
+running = False  # Controls the simulation state
+warning_message = ""
+log_data = []
+total_applied_force = 0
+
+def generate_random_forces():
+    forces = []
+    num_forces = random.randint(4, 6)
+    for _ in range(num_forces):
+        angle = random.uniform(0, 2 * math.pi)
+        magnitude = random.randint(200, 800)
+        force_pos = [random.randint(200, 600), random.randint(150, 450)]
+        forces.append((force_pos, magnitude, angle))
+    return forces
+
+forces = generate_random_forces()
+
+def log_event(event):
+    global log_data
+    log_data.append(f"{datetime.datetime.now()}: {event}\n")
+
+def save_log():
+    with open(LOG_FILE, "w") as log_file:
+        log_file.writelines(log_data)
+
+def draw_status_window(moment):
+    font = pygame.font.Font(None, 30)
+    force_text = f"Total Applied Force: {total_applied_force:.2f} N"
+    moment_text = f"Moment: {moment:.2f}"
+    status_surf = font.render(moment_text, True, TEXT_COLOR)
+    force_surf = font.render(force_text, True, TEXT_COLOR)
+    screen.blit(status_surf, (50, 50))
+    screen.blit(force_surf, (50, 80))
+    
+    if warning_message:
+        warning_surf = font.render(warning_message, True, WARNING_COLOR)
+        screen.blit(warning_surf, (50, 110))
+
+def calculate_moment():
+    global warning_message, total_applied_force
+    total_moment = 0
+    total_applied_force = sum(magnitude for _, magnitude, _ in forces)
+    for force in forces:
+        pos, magnitude, angle = force
+        dx = pos[0] - pivot_pos[0]
+        dy = pos[1] - pivot_pos[1]
+        r = math.sqrt(dx**2 + dy**2)
+        force_perpendicular = magnitude * math.sin(angle)
+        moment = r * force_perpendicular
+        total_moment += moment
+    
+    if total_moment < 1300:
+        warning_message = "Warning: Moment is too low!"
+    elif total_moment > 2000:
+        warning_message = "Warning: Moment exceeds limit!"
+    else:
+        warning_message = ""
+    
+    return max(1300, min(total_moment, 2000))  # Limit within 1300-2000
+
+def main():
+    global object_angle, running, forces, pivot_pos
+    clock = pygame.time.Clock()
+    
+    while True:
+        screen.fill(BACKGROUND_COLOR)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                log_event("Simulation closed")
+                save_log()
+                pygame.quit()
+                return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                x, y = event.pos
+                pivot_pos = [x, y]  # Set pivot point
+                log_event(f"Pivot set at {pivot_pos}")
+        
+        moment = calculate_moment()
+        if running:
+            object_angle += moment * 0.0001  # Adjust rotation speed factor
+        
+        draw_status_window(moment)
+        
+        pygame.display.flip()
+        clock.tick(60)
+
+if __name__ == "__main__":
+    main()
