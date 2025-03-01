@@ -99,7 +99,7 @@ def main():
                 save_log()
                 pygame.quit()
                 return
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN
                 x, y = event.pos
                 pivot_pos = [x, y]  # Set pivot point
                 log_event(f"Pivot set at {pivot_pos}")
